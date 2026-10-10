@@ -21,6 +21,7 @@ import {
   Folders,
   ListBullets,
   DownloadSimple,
+  Export,
   FloppyDisk,
   Power,
 } from "@phosphor-icons/react";
@@ -64,6 +65,7 @@ type ScanSortBy = "name" | "serial";
 type ScanViewMode = "catalogs" | "all";
 
 const DRAG_TYPE_SCAN = "application/x-media-catalog-scan";
+const DATABASE_SAVE_PATH_KEY = "media-catalog-database-save-path";
 const SCAN_VIEW_MODE_KEY = "media-catalog-scan-view-mode";
 const SCAN_SORT_BY_KEY = "media-catalog-scan-sort-by";
 const EXPANDED_CATALOGS_KEY = "media-catalog-expanded-catalogs";
@@ -397,21 +399,58 @@ export function AppSidebar({
     }
   }
 
-  async function handleExportDatabase() {
+  function readSavedDatabasePath(): string | null {
+    if (typeof window === "undefined") return null;
+    const stored = window.localStorage.getItem(DATABASE_SAVE_PATH_KEY);
+    return stored && stored.trim() ? stored : null;
+  }
+
+  function rememberDatabasePath(path: string) {
+    window.localStorage.setItem(DATABASE_SAVE_PATH_KEY, path);
+  }
+
+  async function writeDatabaseCopy(targetPath: string) {
+    const savedPath = await invoke<string>("export_database", { targetPath });
+    rememberDatabasePath(savedPath);
+    return savedPath;
+  }
+
+  async function handleSaveDatabaseAs() {
     const date = new Date().toISOString().slice(0, 10);
-    const defaultPath = `media_catalog_backup_${date}.db`;
+    const defaultPath = readSavedDatabasePath() ?? `media_catalog_backup_${date}.db`;
     try {
       setDbActionBusy(true);
       const targetPath = await save({
         defaultPath,
-        title: "Uložit kopii databáze",
+        title: "Uložit databázi jako",
+        filters: [{ name: "SQLite Database", extensions: ["db"] }],
       });
       if (!targetPath) return;
-      await invoke("export_database", { targetPath });
-      await message("Databáze byla úspěšně exportována.", "Media Catalog");
+      const savedPath = await writeDatabaseCopy(targetPath);
+      await message(`Databáze byla uložena do:\n${savedPath}`, "Media Catalog");
     } catch (err) {
       await message(
-        err instanceof Error ? err.message : "Export databáze selhal.",
+        err instanceof Error ? err.message : "Uložení databáze selhalo.",
+        { title: "Media Catalog", kind: "error" }
+      );
+    } finally {
+      setDbActionBusy(false);
+    }
+  }
+
+  async function handleSaveDatabase() {
+    const existing = readSavedDatabasePath();
+    if (!existing) {
+      await handleSaveDatabaseAs();
+      return;
+    }
+    try {
+      setDbActionBusy(true);
+      const savedPath = await writeDatabaseCopy(existing);
+      await message(`Databáze byla uložena do:\n${savedPath}`, "Media Catalog");
+    } catch (err) {
+      await message(
+        err instanceof Error ? err.message : "Uložení databáze selhalo.",
         { title: "Media Catalog", kind: "error" }
       );
     } finally {
@@ -471,8 +510,8 @@ export function AppSidebar({
         <SidebarHeader className="border-b border-sidebar-border px-4 h-[72px] justify-center">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Book size={20} weight="fill" className="text-primary" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-highlight text-highlight-foreground">
+                <Book size={18} weight="fill" />
               </div>
               <h2 className="text-base font-semibold tracking-tight truncate">Media Catalog</h2>
               <DropdownMenu>
@@ -482,13 +521,17 @@ export function AppSidebar({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleSaveDatabase} disabled={dbActionBusy}>
+                    <FloppyDisk size={14} />
+                    Uložit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSaveDatabaseAs} disabled={dbActionBusy}>
+                    <Export size={14} />
+                    Uložit jako
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleImportDatabase} disabled={dbActionBusy}>
                     <DownloadSimple size={14} />
                     Importovat databázi
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportDatabase} disabled={dbActionBusy}>
-                    <FloppyDisk size={14} />
-                    Exportovat databázi
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={handleQuitApp}>
@@ -587,7 +630,7 @@ export function AppSidebar({
                       <button
                         type="button"
                         className={`flex flex-1 min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          selectedCatalogId === "favorites" ? "bg-sidebar-accent font-medium" : ""
+                          selectedCatalogId === "favorites" ? "bg-card font-medium shadow-sm" : ""
                         }`}
                         onClick={() => handleCatalogClick("favorites")}
                       >
@@ -639,7 +682,7 @@ export function AppSidebar({
                               }}
                               className={`group/row flex items-center gap-2 rounded px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing ${
                                 selectedScanId === scan.id
-                                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                  ? "bg-card text-foreground shadow-sm"
                                   : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                               }`}
                               onClick={() => onScanSelect?.(scan)}
@@ -732,7 +775,7 @@ export function AppSidebar({
                         <button
                           type="button"
                           className={`flex flex-1 min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                            selectedCatalogId === "all" ? "bg-sidebar-accent font-medium" : ""
+                            selectedCatalogId === "all" ? "bg-card font-medium shadow-sm" : ""
                           }`}
                           onClick={() => handleCatalogClick("all")}
                         >
@@ -784,7 +827,7 @@ export function AppSidebar({
                                 }}
                                 className={`group/row flex items-center gap-2 rounded px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing ${
                                   selectedScanId === scan.id
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                    ? "bg-card text-foreground shadow-sm"
                                     : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 }`}
                                 onClick={() => onScanSelect?.(scan)}
@@ -913,7 +956,7 @@ export function AppSidebar({
                         <button
                           type="button"
                           className={`flex flex-1 min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                            selectedCatalogId === cat.id ? "bg-sidebar-accent font-medium" : ""
+                            selectedCatalogId === cat.id ? "bg-card font-medium shadow-sm" : ""
                           }`}
                           onClick={() => handleCatalogClick(cat.id)}
                         >
@@ -1001,7 +1044,7 @@ export function AppSidebar({
                                 }}
                                 className={`group/row flex items-center gap-2 rounded px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing ${
                                   selectedScanId === scan.id
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                    ? "bg-card text-foreground shadow-sm"
                                     : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 }`}
                                 onClick={() => onScanSelect?.(scan)}

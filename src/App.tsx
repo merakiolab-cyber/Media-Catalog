@@ -158,7 +158,7 @@ function App() {
             maxSize={800}
             className="flex flex-col min-h-0"
           >
-            <aside className="flex flex-1 min-h-0 overflow-hidden flex-col bg-card border-r border-border/60 max-lg:border-b">
+            <aside className="m-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-card shadow-[0_1px_2px_oklch(0_0_0/0.04),0_12px_32px_oklch(0_0_0/0.06)]">
             {selectedScan ? (
               <CDDetailPanel
                 scan={selectedScan}
@@ -198,8 +198,8 @@ function App() {
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 p-12 min-h-[280px]">
-                <div className="size-12 rounded-xl bg-muted/50 flex items-center justify-center">
-                  <Disc size={28} weight="duotone" className="text-muted-foreground" />
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-highlight text-highlight-foreground">
+                  <Disc size={26} weight="fill" />
                 </div>
                 <p className="text-sm font-medium text-muted-foreground text-center">
                   Vyberte sken pro zobrazení detailu
@@ -214,8 +214,8 @@ function App() {
           <Separator className="hidden lg:block w-1.5 shrink-0 rounded-full bg-border/50 transition-colors hover:bg-primary/30" />
           <Panel id="main" minSize={30} className="flex flex-col min-w-0 min-h-0">
           <main className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden">
-            <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6">
-              <section className="shrink-0 rounded-xl border border-border/80 bg-muted/30 p-6">
+            <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-5 px-6 py-6">
+              <section className="shrink-0">
                 <CatalogDashboard refreshTrigger={refreshTrigger} />
               </section>
               <section className="flex min-h-0 flex-1 flex-col gap-3">
@@ -223,7 +223,7 @@ function App() {
                   value={catalogQuery}
                   onChange={setCatalogQuery}
                   placeholder="Hledat soubory a složky v celém katalogu..."
-                  inputClassName="h-10"
+                  inputClassName="h-11 rounded-xl border-transparent bg-card shadow-sm"
                 />
                 {catalogQuery.trim() ? (
                   <CatalogSearchResults
@@ -238,11 +238,9 @@ function App() {
                     }}
                   />
                 ) : (
-                  <section className="rounded-xl border border-border/80 bg-card overflow-hidden">
-                    <div className="p-6">
-                      <div ref={scannerRef}>
-                        <ScannerPanel onScanComplete={handleScanComplete} />
-                      </div>
+                  <section className="overflow-hidden">
+                    <div ref={scannerRef}>
+                      <ScannerPanel onScanComplete={handleScanComplete} />
                     </div>
                   </section>
                 )}

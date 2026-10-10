@@ -189,7 +189,7 @@ function VirtualizedFolderTree({
             <div
               className={cn(
                 "flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/40 cursor-pointer transition-colors min-w-0",
-                highlightPath === node.path && "bg-primary/20 ring-1 ring-inset ring-primary/60"
+                highlightPath === node.path && "bg-highlight/70 ring-1 ring-inset ring-highlight"
               )}
               style={{ paddingLeft: depth * 16 }}
               onClick={() => {
@@ -594,11 +594,11 @@ export function CDDetailPanel({
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between gap-2 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Disc size={22} weight="fill" className="text-primary" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-highlight text-highlight-foreground">
+            <Disc size={20} weight="fill" />
           </div>
           <div className="min-w-0">
-            <h2 className="font-semibold text-foreground truncate">{displayTitle}</h2>
+            <h2 className="truncate text-lg font-semibold tracking-tight text-foreground">{displayTitle}</h2>
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">

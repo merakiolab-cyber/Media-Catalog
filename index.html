@@ -7,7 +7,7 @@
     <title>Media Catalog</title>
     <script>
       (function() {
-        var theme = localStorage.getItem("media-catalog-theme");
+        var theme = localStorage.getItem("media-catalog-theme") || "light";
         var isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         if (isDark) document.documentElement.classList.add("dark");
       })();

@@ -129,7 +129,7 @@ function highlightName(name: string, query: string) {
   return (
     <>
       {name.slice(0, at)}
-      <mark className="bg-primary/25 text-foreground rounded-sm px-0.5">
+      <mark className="rounded-sm bg-highlight px-0.5 text-highlight-foreground">
         {name.slice(at, at + q.length)}
       </mark>
       {name.slice(at + q.length)}

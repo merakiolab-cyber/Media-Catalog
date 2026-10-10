@@ -601,7 +601,7 @@ fn get_db_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn export_database(app: tauri::AppHandle, target_path: String) -> Result<(), String> {
+pub fn export_database(app: tauri::AppHandle, target_path: String) -> Result<String, String> {
     let db_path = get_db_path(&app)?;
     let target = Path::new(&target_path);
 
@@ -628,7 +628,7 @@ pub fn export_database(app: tauri::AppHandle, target_path: String) -> Result<(),
     if let Err(e) = std::fs::copy(&db_path, &target_path_buf) {
         return Err(format!("Chyba při kopírování databáze: {}", e));
     }
-    Ok(())
+    Ok(target_path_buf)
 }
 
 #[tauri::command]

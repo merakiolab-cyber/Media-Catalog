@@ -22,7 +22,7 @@
   - strom katalogů + Favorites sekce
   - vyhledávání, drag-and-drop přesun skenů mezi katalogy
   - CRUD katalogů
-  - app menu v headeru (import/export databáze, ukončení aplikace)
+  - app menu v headeru (`Uložit`, `Uložit jako`, import databáze, ukončení aplikace)
   - zvýraznění právě vybraného skenu v levém menu
   - režimy zobrazení `Katalogy` / `Všechny skeny`
 - `src/components/CDDetailPanel.tsx`:
@@ -61,7 +61,7 @@
 
 ## UI/UX Guidelines
 
-- Dark mode musí být konzistentní v celé appce (bez bílých ploch mimo záměr).
+- Světlý vzhled je výchozí směr: šedé plátno, bílé karty, žlutý akcent. Dark mode držet ve stejné struktuře, bez náhodných bílých ploch.
 - Sidebar + detail panel mají být čitelné i při menší šířce panelů.
 - Pracovat s českými labely UI (např. „Nový sken“, „Oblíbené“, „Importovat databázi“, „Exportovat databázi“).
 - Keep interactions snappy: optimistic update tam, kde je to bezpečné (delete/favorite/move).

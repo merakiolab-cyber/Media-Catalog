@@ -7,7 +7,6 @@ import {
   Disc,
   Folder,
   HardDrive,
-  ChartBar,
 } from "@phosphor-icons/react";
 
 type CatalogStats = {
@@ -75,11 +74,11 @@ export function CatalogDashboard({ refreshTrigger }: { refreshTrigger?: number }
     return (
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Přehled katalogu</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="rounded-xl border border-border/60 bg-card p-4 h-24 animate-pulse"
+              className="h-28 animate-pulse rounded-2xl bg-card shadow-sm"
             />
           ))}
         </div>
@@ -89,27 +88,24 @@ export function CatalogDashboard({ refreshTrigger }: { refreshTrigger?: number }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <ChartBar size={18} weight="duotone" className="text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Přehled katalogu</h3>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <h3 className="text-2xl font-semibold tracking-tight text-foreground">Přehled katalogu</h3>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STAT_CARDS.map(({ key, label, icon: Icon, getValue }) => (
           <div
             key={key}
-            className="rounded-xl border border-border/70 bg-card p-4 shadow-sm transition-colors hover:border-border/80"
+            className="rounded-2xl bg-card p-4 shadow-[0_1px_2px_oklch(0_0_0/0.04),0_10px_28px_oklch(0_0_0/0.05)]"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Icon size={20} weight="duotone" className="text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">{label}</p>
-                <p className="text-lg font-semibold tabular-nums text-foreground truncate">
-                  {stats ? getValue(stats) : "—"}
-                </p>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {label}
+              </p>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-highlight text-highlight-foreground">
+                <Icon size={16} weight="fill" />
               </div>
             </div>
+            <p className="mt-4 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+              {stats ? getValue(stats) : "—"}
+            </p>
           </div>
         ))}
       </div>

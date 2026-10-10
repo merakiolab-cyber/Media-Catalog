@@ -137,13 +137,13 @@ export function ScannerPanel({
   }
 
   return (
-    <Card className="overflow-hidden border-border/80 shadow-sm">
+    <Card className="overflow-hidden rounded-2xl border-0 shadow-[0_1px_2px_oklch(0_0_0/0.04),0_10px_28px_oklch(0_0_0/0.05)]">
       <CardHeader className="space-y-1.5 pb-4">
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary/10">
-            <Disc size={18} weight="fill" className="text-primary" />
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-highlight text-highlight-foreground">
+            <Disc size={18} weight="fill" />
           </div>
-          <CardTitle className="text-lg">Nový sken</CardTitle>
+          <CardTitle className="text-xl tracking-tight">Nový sken</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -261,9 +261,9 @@ export function ScannerPanel({
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Zpracováno {scanProgress.toLocaleString()} souborů</span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full animate-pulse rounded-full bg-primary/80 transition-[width] duration-500"
+                className="h-full animate-pulse rounded-full bg-highlight transition-[width] duration-500"
                 style={{
                   width: `${Math.min(92, 15 + Math.log10(scanProgress + 1) * 25)}%`,
                 }}

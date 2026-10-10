@@ -7,10 +7,21 @@ Projekt Media Catalog – Tauri 2 + React + SQLite.
 
 ## [Unreleased]
 
+### Stav k 11. 10. 2026
+
+Hotová verze pro portfolio: [Media-Catalog](https://github.com/merakiolab-cyber/Media-Catalog).
+
+- Sken disku nebo složky, strom katalogů, detail souborů, oblíbené
+- Fulltext v pravém okně pod přehledem; řazení podle názvu a typu; klik rozbalí cestu a ukáže konkrétní soubor
+- Menu: `Uložit`, `Uložit jako`, import s potvrzením, ukončení aplikace
+- Světlý vzhled (šedé plátno, bílé karty, žlutý akcent); tmavý režim ve stejné struktuře
+- Pracovní databáze jen lokálně v `CDMediacatalog/` (do gitu nepatří)
+- Produkční soubor: `src-tauri/target/release/media-catalog.exe` přes `npm run tauri:build`
+
 ### Added
 
 - **Fulltext přes celý katalog**
-  - Pole v sidebaru hledá názvy souborů a složek ve všech skenech (`search_catalog_files`)
+  - Pole v pravém okně hledá názvy souborů a složek ve všech skenech (`search_catalog_files`)
   - Výsledky (obrázky, složky i ostatní soubory) se vypisují v hlavním panelu včetně disku a cesty
   - Kliknutí otevře daný sken, rozbalí cestu a zvýrazní přímo ten soubor nebo složku
   - Výsledky jde řadit podle názvu nebo typu souboru
@@ -27,12 +38,20 @@ Projekt Media Catalog – Tauri 2 + React + SQLite.
   - Přidána akce `Ukončit aplikaci` (`quit_application`)
 - **Refresh jednotek ve ScannerPanel**
   - Tlačítko `Refresh` pro znovunačtení CD-ROM a disků bez restartu aplikace
+- **Uložení databáze**
+  - Menu `Uložit` zapíše kopii do poslední zvolené cesty
+  - `Uložit jako` otevře dialog a cestu si pamatuje
+  - Když ještě žádná cesta není, `Uložit` se chová jako `Uložit jako`
 - **Potvrzovací dialog před importem**
   - Import je destruktivní akce (přepisuje katalogy, skeny i soubory)
   - Uživatel musí import explicitně potvrdit
 
 ### Changed
 
+- **Vzhled podle světlého dashboardu**
+  - Teplé šedé plátno, bílé plovoucí karty, výraznější zaoblení
+  - Žlutý akcent na značkách a průběhu, hlavní tlačítka zůstávají tmavá
+  - Přehled katalogu je řada karet s popiskem a velkým číslem
 - **Příprava na veřejné repo**
   - Identifikátor aplikace už neobsahuje osobní jméno
   - `CDMediacatalog/` (osobní databáze a zálohy) je celé v `.gitignore`
@@ -132,10 +151,11 @@ Agent rules: `.cursorrules`, `.cursor/rules/lessons-learned.mdc`, `AGENTS.md`.
 - Init: `db::ensure_database` – `OnceLock` + mutex (bez paralelních migrací)
 - Stats: z agregátů `media_scans`, ne full scan `file_entries`
 - Access: rusqlite `invoke` (`list_media_scans`, `get_catalog_stats`, …)
+- Kopie ven: `Uložit` / `Uložit jako` přes `export_database`; poslední cesta je v `localStorage` (`media-catalog-database-save-path`)
 
 ### Klíčové soubory
 
-- `src/components/AppSidebar.tsx` – katalogy, skeny, import/export
+- `src/components/AppSidebar.tsx` – katalogy, skeny, uložit / uložit jako / import
 - `src/components/CDDetailPanel.tsx` – detail skenu (panel, ne dialog)
 - `src/components/CatalogDashboard.tsx` – přehled statistik
 - `src-tauri/src/db.rs` – cesta DB, seed, migrace rusqlite
