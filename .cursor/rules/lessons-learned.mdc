@@ -1,0 +1,52 @@
+---
+description: Hard-won lessons – DB path, build, race conditions, testing pitfalls
+alwaysApply: true
+---
+
+# Lessons Learned (Media Catalog)
+
+Přečti před změnami DB, buildu nebo startovacího načítání. Tyto chyby už jednou stály hodiny debugu.
+
+## Databáze
+
+1. **Aktivní DB je jen `CDMediacatalog/media_catalog.db`** (vedle kořene projektu, přes `CARGO_MANIFEST_DIR`).
+   - Ne AppData jako primární zdroj. AppData je legacy fallback při prvním seedu.
+   - Zálohy: `CDMediacatalog/media_catalog_backup_*.db` – při chybějící aktivní DB kopíruj **nejnovější** zálohu.
+2. **`ensure_database` musí být jednorázové** (`OnceLock` + mutex).
+   - Paralelní `invoke` při startu (sidebar + dashboard) jinak závodí o migrace/kopii a UI vypadá náhodně prázdné.
+3. **Statistiky katalogu počítej z `media_scans`** (`file_count`, `total_size_bytes`), ne `COUNT(*)` přes celé `file_entries`.
+   - Full scan velké tabulky při startu blokuje / vypadá jako „přehled se nenačetl“.
+4. **Frontend → DB jen přes rusqlite `invoke` commandy**, ne `tauri-plugin-sql` / `Database.load`.
+   - Plugin-sql v `lib.rs` zůstává jen kvůli legacy migracím AppData – nové feature tam nepřidávej.
+5. **WAL checkpoint**: `PRAGMA wal_checkpoint(...)` vrací řádky → `query_row`, ne `execute`.
+
+## Build & runtime
+
+1. **Produkční `.exe` jen přes Tauri build**
+   - OK: `npm run tauri:build` / `npx tauri build` (script má `--no-bundle`).
+   - ŠPATNĚ: samotný `cargo build --release` → `.exe` hledá frontend na `localhost:1420` → `ERR_CONNECTION_REFUSED`.
+2. **`npm run dev` ≠ plná appka**
+   - Vite bez Tauri → `invoke` selže (`window.__TAURI_INTERNALS__` chybí).
+   - Testovat data/backend vždy v `npm run tauri:dev` nebo v sestaveném `.exe`.
+3. **Staré `.exe` v `target/release` nemusí odpovídat aktuálnímu kódu**
+   - Po změně Rust/DB vždy znovu `tauri:build` a spouštět čerstvý binár.
+
+## Frontend start / sidebar
+
+1. Persistuj a obnovuj ze `localStorage`: vybraný katalog, režim zobrazení, řazení, rozbalení stromu.
+2. Po načtení skenů **rozbal vybraný katalog** – jinak vypadá prázdně, i když data jsou.
+3. Katalog `root` („Vše“) musí zůstat ve stromu – default cíl nových skenů.
+4. Načítání katalogů vs skenů: `Promise.allSettled` (jedna chyba nesmí shodit druhé).
+5. Optimistic update jen u bezpečných akcí (delete / favorite / move); po chybě rollback.
+
+## Diagnostika (neopakovat slepé uličky)
+
+| Symptom | Častá příčina |
+|---------|----------------|
+| Cursor preview: invoke error | Běží jen Vite, ne Tauri |
+| `.exe`: connection refused localhost:1420 | Build přes `cargo release` místo `tauri build` |
+| Intermitentně prázdný sidebar XOR dashboard | Race v `ensure_database` / pomalé stats |
+| Prázdný katalog po přesunu DB | App čte starou cestu (AppData) místo `CDMediacatalog` |
+| Export selže na wal_checkpoint | `execute` místo `query_row` |
+
+Po debug session vždy odstraň agent instrumentation (`#region agent log`, ingest fetch, dočasné log soubory).

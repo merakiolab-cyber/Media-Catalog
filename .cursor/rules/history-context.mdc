@@ -1,0 +1,22 @@
+---
+description: Doplňkový kontext: historie změn a poznámky k vývoji
+alwaysApply: true
+---
+
+# History & Development Context
+
+## Changelog
+
+Při práci na projektu vždy načti **[CHANGELOG.md](CHANGELOG.md)** pro:
+- Přehled nedávných změn a implementovaných funkcí
+- Poznámky k vývoji (spuštění, klíčové soubory, DB schéma)
+- Kontext bugfixů a jejich příčiny
+
+Pro opakující se pasti (DB cesta, build, race) dodržuj také **[lessons-learned.mdc](lessons-learned.mdc)**.
+
+## Aktualizace CHANGELOG
+
+Po provedení významných změn (nové featury, bugfixy, breaking changes) aktualizuj CHANGELOG.md:
+- Nové položky přidávej pod `## [Unreleased]` v sekcích `### Added`, `### Fixed`, `### Changed`
+- Při release přesuň `[Unreleased]` na novou verzi s datem
+- U netriviálních bugfixů krátce uveď **příčinu** (ne jen symptom), ať se neopakují

@@ -1,0 +1,86 @@
+# Media Catalog - Project Rules
+
+## History & Context
+
+- **Changelog**: viz `CHANGELOG.md` pro historii změn, rozhodnutí a důležité milníky.
+- Pokud je k dispozici kontextové pravidlo v `.cursor/rules/`, držet se jeho instrukcí jako primárního zdroje.
+
+## Tech Stack
+
+- **Desktop**: Tauri 2 + React 19 + Vite + TypeScript
+- **UI**: Tailwind v4, shadcn/ui, Phosphor Icons
+- **State/Data flow**: React hooks + Tauri `invoke` commandy (rusqlite backend)
+- **Database**: SQLite (WAL mode) v `CDMediacatalog/media_catalog.db`, migrace v `src-tauri/migrations`
+
+## Current App Structure
+
+- `src/App.tsx`:
+  - 3sloupcový desktop layout (sidebar vlevo, detail skenu vpravo od sidebaru, hlavní obsah)
+  - resizable panely přes `react-resizable-panels`
+  - orchestruje dialogy edit/delete, optimistic delete a refresh trigger
+- `src/components/AppSidebar.tsx`:
+  - strom katalogů + Favorites sekce
+  - vyhledávání, drag-and-drop přesun skenů mezi katalogy
+  - CRUD katalogů
+  - app menu v headeru (import/export databáze, ukončení aplikace)
+  - zvýraznění právě vybraného skenu v levém menu
+  - režimy zobrazení `Katalogy` / `Všechny skeny`
+- `src/components/CDDetailPanel.tsx`:
+  - detail položky se stromem souborů
+  - fulltext vyhledávání + řazení (name/date/type/size)
+  - metadata v jednom řádku (číslo disku, rok, cesta, velikost)
+  - aktualizace existujícího skenu z vybraného média/složky
+- `src/components/ScannerPanel.tsx`:
+  - sken CD-ROM/složky, výběr katalogu, serial number
+  - tlačítko `Refresh` pro znovunačtení jednotek bez restartu aplikace
+- `src/components/CatalogDashboard.tsx`:
+  - statistiky katalogu
+- `src-tauri/src/commands.rs`:
+  - katalogy: `list/create/update/delete_catalog`
+  - skeny: `scan_path`, `refresh_media_scan`, `update_media_scan`, `delete_media_scan`, `move_scan_to_catalog`, `toggle_favorite`, `list_media_scans`, `get_media_scan`
+  - detail/search: `list_file_entries`, `search_file_entries`, `search_catalog`, `search_catalog_files`
+  - db maintenance: `export_database`, `import_database`, `quit_application`, `get_catalog_stats`
+- `src-tauri/src/db.rs`:
+  - aktivní DB: `CDMediacatalog/media_catalog.db` (vedle kořene projektu)
+  - při prvním startu kopie z AppData nebo nejnovější `media_catalog_backup_*.db`
+
+## DB Schema (current)
+
+- `catalogs`: `id`, `parent_id`, `name`, `created_at`
+- `media_scans`: `id`, `catalog_id`, `serial_number`, `label`, `drive_path`, `scan_started_at`, `scan_completed_at`, `file_count`, `total_size_bytes`, `is_favorite`, `media_fingerprint`
+- `file_entries`: `id`, `media_scan_id`, `path`, `full_path`, `name`, `is_directory`, `size_bytes`, `modified_at`, `parent_id`
+
+## Coding Conventions
+
+- Preferovat funkční komponenty + hooks; nové UI skládat ze shadcn komponent.
+- Nezavádět nové ikonové sady; používat Phosphor Icons konzistentně.
+- U Tauri commandů držet signaturu `Result<T, String>` a srozumitelné CZ chybové zprávy pro UI.
+- Pro změny DB schématu vždy přidat novou migraci (neměnit staré migrace zpětně).
+- Při importu databáze vždy explicitně potvrdit destruktivní akci v UI.
+- Při aktualizaci existujícího skenu vždy nejdřív vyžádat výběr zdrojového média/složky.
+
+## UI/UX Guidelines
+
+- Dark mode musí být konzistentní v celé appce (bez bílých ploch mimo záměr).
+- Sidebar + detail panel mají být čitelné i při menší šířce panelů.
+- Pracovat s českými labely UI (např. „Nový sken“, „Oblíbené“, „Importovat databázi“, „Exportovat databázi“).
+- Keep interactions snappy: optimistic update tam, kde je to bezpečné (delete/favorite/move).
+- V detailu položky má scrollovat pouze výpis složek/souborů; header a metadata zůstávají fixní.
+- Vyhnout se dvojitému scrollu v sidebaru/detailu (jeden scroll kontejner na oblast).
+
+## Pitfalls (viz `.cursor/rules/lessons-learned.mdc`)
+
+- DB jen `CDMediacatalog/media_catalog.db`; `ensure_database` jednorázově (OnceLock).
+- Stats z `media_scans`, ne full scan `file_entries`.
+- Data/`invoke` testovat v `tauri:dev` nebo sestaveném `.exe`, ne v `npm run dev`.
+- Release jen `npm run tauri:build` — ne `cargo build --release`.
+- Po debug session odstranit agent instrumentation a `debug-*.log`.
+
+## Run & Environment
+
+- `npm run dev` = pouze frontend preview (bez backend commandů).
+- `npx tauri dev` / `npm run tauri:dev` = plná desktop aplikace.
+- `npm run tauri:build` = produkční `.exe` (nepoužívat samotný `cargo build --release` – skončí u `localhost:1420`).
+- Nutné lokálně:
+  - Rust toolchain (`cargo`, `rustc` přes rustup)
+  - na Windows Visual Studio Build Tools (Desktop development with C++) kvůli linkeru.

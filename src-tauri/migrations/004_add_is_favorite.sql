@@ -1,0 +1,1 @@
+ALTER TABLE media_scans ADD COLUMN is_favorite INTEGER DEFAULT 0;
