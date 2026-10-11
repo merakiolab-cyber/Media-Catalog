@@ -19,6 +19,9 @@ Přečti před změnami DB, buildu nebo startovacího načítání. Tyto chyby u
 4. **Frontend → DB jen přes rusqlite `invoke` commandy**, ne `tauri-plugin-sql` / `Database.load`.
    - Plugin-sql v `lib.rs` zůstává jen kvůli legacy migracím AppData – nové feature tam nepřidávej.
 5. **WAL checkpoint**: `PRAGMA wal_checkpoint(...)` vrací řádky → `query_row`, ne `execute`.
+6. **Aktualizace skenu nesmí nejdřív mazat všechny řádky.**
+   - `DELETE` + nový insert je pomalejší než smazat sken a založit ho znovu, protože se stejná práce udělá dvakrát.
+   - Načti stávající `path → (size, mtime)`, při průchodu jen insert/update změn, na konci smaž zmizelé.
 
 ## Build & runtime
 
@@ -30,11 +33,14 @@ Přečti před změnami DB, buildu nebo startovacího načítání. Tyto chyby u
    - Testovat data/backend vždy v `npm run tauri:dev` nebo v sestaveném `.exe`.
 3. **Staré `.exe` v `target/release` nemusí odpovídat aktuálnímu kódu**
    - Po změně Rust/DB vždy znovu `tauri:build` a spouštět čerstvý binár.
+4. **Dlouhý sken nesmí být synchronní Tauri command**
+   - `#[tauri::command] fn` běží na hlavním vlákně a okno zamrzne, dokud příkaz neskončí. Průběh (`scan-progress`) se v tu chvíli ani nevykreslí.
+   - `scan_path` a `refresh_media_scan` jsou `async` a práci dávají do `spawn_blocking`.
 
 ## Frontend start / sidebar
 
 1. Persistuj a obnovuj ze `localStorage`: vybraný katalog, režim zobrazení, řazení, rozbalení stromu.
-2. Po načtení skenů **rozbal vybraný katalog** – jinak vypadá prázdně, i když data jsou.
+2. Složky v **Katalogy** jsou defaultně sbalené. Po načtení skenů je znovu nerozbalovat, ani při výběru katalogu. Ve `localStorage` drž jen složky, které uživatel sám otevřel.
 3. Katalog `root` („Vše“) musí zůstat ve stromu – default cíl nových skenů.
 4. Načítání katalogů vs skenů: `Promise.allSettled` (jedna chyba nesmí shodit druhé).
 5. Optimistic update jen u bezpečných akcí (delete / favorite / move); po chybě rollback.

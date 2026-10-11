@@ -81,6 +81,7 @@ fn apply_migrations(path: &Path) -> Result<(), String> {
         (6, include_str!("../migrations/006_seed_catalogs.sql")),
         (7, include_str!("../migrations/007_file_entries_scan_path_index.sql")),
         (8, include_str!("../migrations/008_wal_mode.sql")),
+        (9, include_str!("../migrations/009_drop_unused_name_index.sql")),
     ];
 
     for (version, sql) in migrations {

@@ -7,6 +7,23 @@ Projekt Media Catalog – Tauri 2 + React + SQLite.
 
 ## [Unreleased]
 
+### Changed
+
+- Složky v panelu Katalogy, včetně Oblíbených, jsou po startu sbalené. Otevřené zůstanou jen ty, které uživatel rozbalí šipkou.
+- Během aktualizace skenu je nahoře průběh: počet souborů a žlutý pruh, který se hýbe i když číslo chvíli stojí.
+- Aktualizace skenu porovná disk se uloženými soubory. Nezměněné přeskočí, zapíše jen nové nebo změněné a smaže jen ty, které z disku zmizely.
+- Po uložení databáze a po aktualizaci skenu se v aplikaci ukáže potvrzení. U skenu je v něm číslo disku, počet souborů a velikost.
+
+### Fixed
+
+- **Aktualizace skenu už nemaže staré soubory přes 2MB cache**
+  - Příčina: před čtením disku se smažou všechny řádky skenu. Databáze má stovky tisíc souborů a SQLite držela jen 2 MB v paměti, takže každý řádek sahal na disk. Navíc index `idx_file_entries_name` vyhledávání nepoužívá (`fold_name`) a mazání ho přesto přepisovalo.
+  - Sken teď dostane 256 MB cache a nepoužívaný index názvu se zahodí.
+- **Aktualizace skenu už nezamrzne okno**
+  - Příčina: `refresh_media_scan` běžel na hlavním vlákně, takže se UI nepřekreslilo, dokud neskončil celý průchod USB disku
+  - Sken teď běží na pozadí a nahoře ukazuje počet zpracovaných souborů
+  - Průchod disku bere metadata z výpisu složky a přeskakuje systémové složky Windows (`System Volume Information`, `$RECYCLE.BIN`)
+
 ### Stav k 11. 10. 2026
 
 Hotová verze pro portfolio: [Media-Catalog](https://github.com/merakiolab-cyber/Media-Catalog).

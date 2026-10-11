@@ -151,3 +151,12 @@ body {
     box-shadow: 0 0 0 3px color-mix(in oklch, var(--highlight) 55%, transparent);
   }
 }
+
+@keyframes scan-progress-slide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(400%); }
+}
+
+.scan-progress-bar {
+  animation: scan-progress-slide 1.15s ease-in-out infinite;
+}

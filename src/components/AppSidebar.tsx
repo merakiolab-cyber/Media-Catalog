@@ -68,7 +68,7 @@ const DRAG_TYPE_SCAN = "application/x-media-catalog-scan";
 const DATABASE_SAVE_PATH_KEY = "media-catalog-database-save-path";
 const SCAN_VIEW_MODE_KEY = "media-catalog-scan-view-mode";
 const SCAN_SORT_BY_KEY = "media-catalog-scan-sort-by";
-const EXPANDED_CATALOGS_KEY = "media-catalog-expanded-catalogs";
+const EXPANDED_CATALOGS_KEY = "media-catalog-expanded-catalogs-v2";
 
 const ICON_MAP: Record<string, typeof Folder> = {
   root: Folder,
@@ -79,6 +79,27 @@ const ICON_MAP: Record<string, typeof Folder> = {
 
 function getIcon(id: string) {
   return ICON_MAP[id] || Folder;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function refreshScanReport(result: {
+  serial_number: string;
+  file_count: number;
+  total_size_bytes: number;
+}): string {
+  return [
+    "Sken byl úspěšně aktualizován.",
+    "",
+    `Číslo disku: ${result.serial_number}`,
+    `Souborů: ${result.file_count.toLocaleString("cs-CZ")}`,
+    `Velikost: ${formatSize(result.total_size_bytes)}`,
+  ].join("\n");
 }
 
 function readStoredViewMode(): ScanViewMode {
@@ -93,21 +114,16 @@ function readStoredSortBy(): ScanSortBy {
   return raw === "serial" || raw === "name" ? raw : "name";
 }
 
-function readStoredExpanded(selectedCatalogId?: string): Set<string> {
-  const defaults = new Set<string>(["favorites", "root"]);
-  if (selectedCatalogId) defaults.add(selectedCatalogId);
-  if (typeof window === "undefined") return defaults;
+function readStoredExpanded(): Set<string> {
+  if (typeof window === "undefined") return new Set();
   try {
     const raw = window.localStorage.getItem(EXPANDED_CATALOGS_KEY);
-    if (!raw) return defaults;
+    if (!raw) return new Set();
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return defaults;
-    const next = new Set(parsed.filter((id): id is string => typeof id === "string"));
-    if (selectedCatalogId) next.add(selectedCatalogId);
-    next.add("favorites");
-    return next;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
   } catch {
-    return defaults;
+    return new Set();
   }
 }
 
@@ -137,9 +153,7 @@ export function AppSidebar({
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [scans, setScans] = useState<ScanWithCatalog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<Set<string>>(() =>
-    readStoredExpanded(selectedCatalogId)
-  );
+  const [expanded, setExpanded] = useState<Set<string>>(() => readStoredExpanded());
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
@@ -151,6 +165,7 @@ export function AppSidebar({
   const [scanViewMode, setScanViewMode] = useState<ScanViewMode>(() => readStoredViewMode());
   const [dbActionBusy, setDbActionBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<{ title: string; body: string } | null>(null);
 
   const getScanTitle = (scan: ScanWithCatalog) => {
     const label = (scan.label ?? "").trim();
@@ -245,18 +260,6 @@ export function AppSidebar({
       if (errors.length) {
         setLoadError(errors.join(" · "));
       }
-
-      // Po načtení rozbalit katalogy s položkami + vybraný katalog.
-      setExpanded((prev) => {
-        const next = new Set(prev);
-        if (selectedCatalogId) next.add(selectedCatalogId);
-        if (scanViewMode === "all") next.add("all");
-        next.add("favorites");
-        for (const scan of loadedScans) {
-          next.add(scan.catalog_id ?? "root");
-        }
-        return next;
-      });
     } catch (err) {
       console.error("Failed to load sidebar data:", err);
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -286,26 +289,6 @@ export function AppSidebar({
       JSON.stringify(Array.from(expanded))
     );
   }, [expanded]);
-
-  useEffect(() => {
-    if (!selectedCatalogId) return;
-    setExpanded((prev) => {
-      if (prev.has(selectedCatalogId)) return prev;
-      const next = new Set(prev);
-      next.add(selectedCatalogId);
-      return next;
-    });
-  }, [selectedCatalogId]);
-
-  useEffect(() => {
-    if (scanViewMode !== "all") return;
-    setExpanded((prev) => {
-      if (prev.has("all")) return prev;
-      const next = new Set(prev);
-      next.add("all");
-      return next;
-    });
-  }, [scanViewMode]);
 
   const visibleScans = useMemo(
     () => scans.filter((s) => !optimisticDeletedIds.has(s.id)),
@@ -355,10 +338,17 @@ export function AppSidebar({
       });
       const sourcePath = Array.isArray(selected) ? selected[0] : selected;
       if (!sourcePath) return;
-      await invoke("refresh_media_scan", { id: scan.id, sourcePath });
+      const result = await invoke<{
+        serial_number: string;
+        file_count: number;
+        total_size_bytes: number;
+      }>("refresh_media_scan", { id: scan.id, sourcePath });
       loadData();
       onScansChange?.();
-      await message("Sken byl úspěšně aktualizován.", "Media Catalog");
+      setSuccessNotice({
+        title: "Sken aktualizován",
+        body: refreshScanReport(result),
+      });
     } catch (err) {
       await message(
         err instanceof Error ? err.message : "Aktualizace skenu selhala.",
@@ -427,7 +417,10 @@ export function AppSidebar({
       });
       if (!targetPath) return;
       const savedPath = await writeDatabaseCopy(targetPath);
-      await message(`Databáze byla uložena do:\n${savedPath}`, "Media Catalog");
+      setSuccessNotice({
+        title: "Databáze uložena",
+        body: `Databáze byla úspěšně uložena.\n\nSoubor:\n${savedPath}`,
+      });
     } catch (err) {
       await message(
         err instanceof Error ? err.message : "Uložení databáze selhalo.",
@@ -447,7 +440,10 @@ export function AppSidebar({
     try {
       setDbActionBusy(true);
       const savedPath = await writeDatabaseCopy(existing);
-      await message(`Databáze byla uložena do:\n${savedPath}`, "Media Catalog");
+      setSuccessNotice({
+        title: "Databáze uložena",
+        body: `Databáze byla úspěšně uložena.\n\nSoubor:\n${savedPath}`,
+      });
     } catch (err) {
       await message(
         err instanceof Error ? err.message : "Uložení databáze selhalo.",
@@ -1171,6 +1167,24 @@ export function AppSidebar({
             >
               Smazat
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={successNotice !== null}
+        onOpenChange={(open) => {
+          if (!open) setSuccessNotice(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{successNotice?.title}</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-wrap">
+              {successNotice?.body}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

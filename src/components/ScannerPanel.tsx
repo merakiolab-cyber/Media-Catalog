@@ -52,8 +52,8 @@ export function ScannerPanel({
 
   useEffect(() => {
     let mounted = true;
-    listen<{ files: number }>("scan-progress", (ev) => {
-      if (!mounted) return;
+    listen<{ files: number; done?: boolean }>("scan-progress", (ev) => {
+      if (!mounted || ev.payload?.done) return;
       const files = ev.payload?.files;
       if (typeof files === "number") setScanProgress(files);
     }).then((unlisten) => {

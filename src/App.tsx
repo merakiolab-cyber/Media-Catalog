@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Disc } from "@phosphor-icons/react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -35,6 +36,7 @@ function App() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [focusEntry, setFocusEntry] = useState<{ path: string; isDirectory: boolean } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === "undefined") return 256;
@@ -68,6 +70,27 @@ function App() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(SELECTED_CATALOG_KEY, selectedCatalogId);
   }, [selectedCatalogId]);
+
+  useEffect(() => {
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    let unlisten: (() => void) | undefined;
+    let active = true;
+    listen<{ files: number; done?: boolean }>("scan-progress", (event) => {
+      if (!active) return;
+      if (event.payload.done) {
+        setScanProgress(null);
+        return;
+      }
+      setScanProgress(event.payload.files);
+    }).then((stop) => {
+      if (active) unlisten = stop;
+      else stop();
+    });
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, []);
 
   const startSidebarResize = (event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -145,6 +168,23 @@ function App() {
         <div className="mx-auto h-full w-px bg-border/40 transition-colors hover:bg-primary/60" />
       </div>
       <SidebarInset>
+        {scanProgress !== null && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-6 pt-3">
+            <div className="mx-auto w-full max-w-lg rounded-2xl bg-card px-4 py-3 shadow-[0_1px_2px_oklch(0_0_0/0.04),0_12px_32px_oklch(0_0_0/0.08)]">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <p className="text-sm font-medium text-foreground">
+                  {scanProgress === 0 ? "Porovnávám s uloženým skenem…" : "Aktualizuji sken…"}
+                </p>
+                <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                  {scanProgress.toLocaleString("cs-CZ")} souborů
+                </p>
+              </div>
+              <div className="relative h-2 overflow-hidden rounded-full bg-muted">
+                <div className="scan-progress-bar absolute inset-y-0 left-0 w-1/3 rounded-full bg-highlight" />
+              </div>
+            </div>
+          </div>
+        )}
         <Group
           orientation="horizontal"
           className="flex flex-1 h-svh min-h-0 overflow-hidden"

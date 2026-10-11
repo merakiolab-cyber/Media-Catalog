@@ -20,6 +20,15 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, message } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -353,6 +362,7 @@ export function CDDetailPanel({
   const [searchResults, setSearchResults] = useState<FileEntryInfo[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [refreshingScan, setRefreshingScan] = useState(false);
+  const [successNotice, setSuccessNotice] = useState<{ title: string; body: string } | null>(null);
   const [latestStats, setLatestStats] = useState<{
     file_count: number;
     total_size_bytes: number;
@@ -572,6 +582,16 @@ export function CDDetailPanel({
         drive_path: sourcePath,
       });
       loadRoot();
+      setSuccessNotice({
+        title: "Sken aktualizován",
+        body: [
+          "Sken byl úspěšně aktualizován.",
+          "",
+          `Číslo disku: ${result.serial_number}`,
+          `Souborů: ${result.file_count.toLocaleString("cs-CZ")}`,
+          `Velikost: ${formatSize(result.total_size_bytes)}`,
+        ].join("\n"),
+      });
     } catch (err) {
       await message(
         err instanceof Error ? err.message : "Aktualizace skenu selhala.",
@@ -729,6 +749,24 @@ export function CDDetailPanel({
           </div>
         </div>
       </div>
+      <AlertDialog
+        open={successNotice !== null}
+        onOpenChange={(open) => {
+          if (!open) setSuccessNotice(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{successNotice?.title}</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-wrap">
+              {successNotice?.body}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -801,7 +801,7 @@ pub fn delete_catalog(app: tauri::AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn scan_path(
+pub async fn scan_path(
     app: tauri::AppHandle,
     path: String,
     label: Option<String>,
@@ -809,30 +809,57 @@ pub fn scan_path(
     serial_number: Option<String>,
 ) -> Result<scan::ScanResult, String> {
     let db_path = db::get_db_path(&app)?;
-    let app_handle = app.clone();
-    scan::run_scan(
-        &db_path,
-        &path,
-        label,
-        catalog_id,
-        serial_number,
-        move |files| {
-            let _ = app_handle.emit("scan-progress", serde_json::json!({ "files": files }));
-        },
-    )
+    run_scan_off_main(app, move |on_progress| {
+        scan::run_scan(
+            &db_path,
+            &path,
+            label,
+            catalog_id,
+            serial_number,
+            on_progress,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn refresh_media_scan(
+pub async fn refresh_media_scan(
     app: tauri::AppHandle,
     id: String,
     source_path: String,
 ) -> Result<scan::ScanResult, String> {
     let db_path = db::get_db_path(&app)?;
-    let app_handle = app.clone();
-    scan::refresh_scan(&db_path, &id, &source_path, move |files| {
-        let _ = app_handle.emit("scan-progress", serde_json::json!({ "files": files }));
+    run_scan_off_main(app, move |on_progress| {
+        scan::refresh_scan(&db_path, &id, &source_path, on_progress)
     })
+    .await
+}
+
+async fn run_scan_off_main<F>(
+    app: tauri::AppHandle,
+    scan: F,
+) -> Result<scan::ScanResult, String>
+where
+    F: FnOnce(&mut dyn FnMut(u64)) -> Result<scan::ScanResult, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || {
+        let progress_app = app.clone();
+        let mut last_files = 0u64;
+        let outcome = scan(&mut |files| {
+            last_files = files;
+            let _ = progress_app.emit(
+                "scan-progress",
+                serde_json::json!({ "files": files, "done": false }),
+            );
+        });
+        let _ = app.emit(
+            "scan-progress",
+            serde_json::json!({ "files": last_files, "done": true }),
+        );
+        outcome
+    })
+    .await
+    .map_err(|e| format!("Sken byl přerušen: {}", e))?
 }
 
 #[derive(Debug, Serialize, Deserialize)]
